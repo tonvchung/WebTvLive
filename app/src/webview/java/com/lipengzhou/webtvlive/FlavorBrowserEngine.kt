@@ -179,6 +179,13 @@ class FlavorBrowserEngine(private val context: Context) : BrowserEngine {
         webView?.loadUrl(TvCatalog.pageUrl(channel))
     }
 
+    override fun loadReplay(url: String) {
+        require(TrustedWebContent.isAllowedMainFrameUrl(url)) { "拒绝加载非受信任回看页" }
+        bridgeReady = false
+        pendingChannelSwitch = null
+        webView?.loadUrl(url)
+    }
+
     override fun switchChannel(channel: Channel, requestId: Long): Boolean {
         if (!bridgeReady) return false
         pendingChannelSwitch = PendingChannelSwitch(channel, requestId)

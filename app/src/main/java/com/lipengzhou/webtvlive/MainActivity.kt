@@ -5,7 +5,6 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
-import android.util.Log
 import android.view.KeyEvent
 import android.view.MotionEvent
 import android.widget.Toast
@@ -22,7 +21,7 @@ import com.lipengzhou.webtvlive.databinding.ActivityMainBinding
  *  - 遥控器方向键「上/下」循环换台，「确定」键呼出侧边频道菜单，返回键按两次退出应用。
  *
  * 本类只保留「生命周期 + 顶层输入路由 + 面板协调」：内核承载、换台/超时/重试状态机、频道持久化
- * 都在 [PlaybackController]，菜单/设置/触屏/更新分别在各自控制器。改行为请下沉到对应控制器，
+ * 都在 [PlaybackController]，菜单、设置和触屏分别在各自控制器。改行为请下沉到对应控制器，
  * 不要把逻辑再堆回 Activity。
  */
 // TV 遥控器的 BACK 必须与方向键一起在 dispatchKeyEvent 中同步处理；
@@ -32,7 +31,6 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
     private lateinit var playbackController: PlaybackController
-    private var updateController: AppUpdateController? = null
     // 返回键两次退出
     private var lastBackPressedTime = 0L
 
@@ -65,7 +63,6 @@ class MainActivity : AppCompatActivity() {
     companion object {
         private const val BACK_EXIT_INTERVAL = 2000L
         private const val PANEL_AUTO_CLOSE_MS = 12_000L
-        private const val TAG = "WebTvLive"
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -98,11 +95,14 @@ class MainActivity : AppCompatActivity() {
             onInteraction = ::schedulePanelAutoClose,
             onClosed = {
                 if (!settingsVisible) cancelPanelAutoClose()
-                updateController?.onPanelsClosed()
             },
             onChannelChosen = { flatIndex ->
                 cancelPanelAutoClose()
                 playbackController.selectChannel(flatIndex)
+            },
+            onReplayChosen = { channel, item ->
+                cancelPanelAutoClose()
+                playbackController.playReplay(channel, item)
             },
         )
         settingsController = SettingsPanelController(
@@ -116,24 +116,9 @@ class MainActivity : AppCompatActivity() {
             onInteraction = ::schedulePanelAutoClose,
             onClosed = {
                 if (!menuVisible) cancelPanelAutoClose()
-                updateController?.onPanelsClosed()
             },
             onVideoEnhancementChanged = { playbackController.applyVideoEnhancement(it) },
-            onManualUpdateCheck = {
-                cancelPanelAutoClose()
-                updateController?.performManualCheck()
-            },
         )
-        if (BuildConfig.APP_UPDATES_ENABLED) {
-            updateController = AppUpdateController(
-                activity = this,
-                panelsVisible = { menuVisible || settingsVisible },
-                onManualUpdateAvailable = settingsController::close,
-                onManualCheckFinished = ::schedulePanelAutoClose,
-            ).also(AppUpdateController::start)
-        } else {
-            Log.i(TAG, "App updates disabled for ${BuildConfig.BUILD_TYPE} build")
-        }
 
         enableImmersiveFullscreen()
         keepScreenOn()
@@ -142,7 +127,6 @@ class MainActivity : AppCompatActivity() {
             activity = this,
             binding = binding,
             videoEnhancement = { settingsController.videoEnhancement },
-            onPlaybackStarted = { updateController?.startAutomaticCheck() },
         )
         playbackController.start(activityStartedAt)
     }
@@ -165,7 +149,6 @@ class MainActivity : AppCompatActivity() {
         super.onWindowFocusChanged(hasFocus)
         if (hasFocus) {
             enableImmersiveFullscreen()
-            updateController?.onWindowFocusChanged()
         }
     }
     // endregion
@@ -197,9 +180,6 @@ class MainActivity : AppCompatActivity() {
     // 在 dispatchKeyEvent 提前吞掉这些键，浏览器永远拿不到，两个问题一并解决。
     // 菜单展开时，同一批方向键改为在菜单内导航（此时浏览器 View 仍在后面正常播放）。
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
-        if (updateController?.isDialogShowing == true) {
-            return super.dispatchKeyEvent(event)
-        }
         val keyCode = event.keyCode
         if (isRemoteControlKey(keyCode)) {
             // 只在按下时执行动作；抬起事件也一并吞掉，避免只截按下、抬起漏给 WebView
@@ -254,6 +234,11 @@ class MainActivity : AppCompatActivity() {
         if (settingsController.channelSwitchReversed) -defaultDelta else defaultDelta
 
     private fun handleBack() {
+        if (playbackController.isReplayActive) {
+            lastBackPressedTime = 0L
+            playbackController.returnToLive()
+            return
+        }
         val now = System.currentTimeMillis()
         if (now - lastBackPressedTime < BACK_EXIT_INTERVAL) {
             finish()
@@ -274,12 +259,10 @@ class MainActivity : AppCompatActivity() {
         super.onResume()
         playbackController.onResume()
         enableImmersiveFullscreen()
-        updateController?.onResume()
     }
 
     override fun onDestroy() {
         uiHandler.removeCallbacks(autoClosePanelRunnable)
-        updateController?.close()
         channelMenuController.dispose()
         touchController.dispose()
         playbackController.onDestroy()

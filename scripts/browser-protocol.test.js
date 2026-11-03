@@ -22,7 +22,7 @@ const fixture = JSON.parse(fs.readFileSync(
 test('creates versioned page events', () => {
   assert.deepEqual(
     JSON.parse(JSON.stringify(protocol.message('playing', { requestId: 9 }))),
-    { protocolVersion: 1, type: 'playing', requestId: 9 }
+    { protocolVersion: 2, type: 'playing', requestId: 9 }
   );
 });
 
@@ -30,19 +30,19 @@ test('accepts only complete versioned native commands', () => {
   assert.equal(protocol.version, fixture.version);
   assert.equal(protocol.isCommand(fixture.validCommand), true);
   assert.equal(protocol.isCommand({
-    protocolVersion: 1,
+    protocolVersion: 2,
     type: 'setVideoEnhancement',
     level: 'standard',
   }), true);
   assert.equal(protocol.isCommand({
-    protocolVersion: 2,
+    protocolVersion: 3,
     type: 'switchChannel',
     channel: 'CCTV13',
     pid: '600001811',
     requestId: 9,
   }), false);
   assert.equal(protocol.isCommand({
-    protocolVersion: 1,
+    protocolVersion: 2,
     type: 'switchChannel',
     channel: 'CCTV13',
     pid: '600001811',

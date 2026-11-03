@@ -1,7 +1,7 @@
 (function (root) {
   'use strict';
 
-  var VERSION = 1;
+  var VERSION = 2;
 
   function message(type, extra) {
     var payload = { protocolVersion: VERSION, type: type };

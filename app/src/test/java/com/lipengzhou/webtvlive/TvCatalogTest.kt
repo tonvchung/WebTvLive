@@ -16,6 +16,42 @@ class TvCatalogTest {
     }
 
     @Test
+    fun replayUrlUsesOfficialPageAndSpecialCctvSlugs() {
+        val item = ProgramGuideItem(
+            programId = "program",
+            name = "已播节目",
+            startEpochSeconds = 1793714400,
+            endEpochSeconds = 1793716200,
+            startTime = "22:00",
+            endTime = "22:30",
+            durationSeconds = 1800,
+            isVip = false,
+            copyrightFlag = "1",
+            timeShiftReviewFlag = "1",
+        )
+        assertEquals(
+            "https://tv.cctv.com/live/cctv13/?webtvReplayStart=1793714400&webtvRequestId=42",
+            TvCatalog.replayPageUrl(TvCatalog.flatChannels.first { it.siteName == "CCTV13" }, item, 42),
+        )
+        assertEquals(
+            "https://tv.cctv.com/live/cctv5plus/?webtvReplayStart=1793714400&webtvRequestId=42",
+            TvCatalog.replayPageUrl(TvCatalog.flatChannels.first { it.siteName == "CCTV5+" }, item, 42),
+        )
+        assertEquals(
+            "https://tv.cctv.com/live/cctv16/?webtvReplayStart=1793714400&webtvRequestId=42",
+            TvCatalog.replayPageUrl(
+                TvCatalog.flatChannels.first { it.siteName == "CCTV16-HD" },
+                item,
+                42,
+            ),
+        )
+        assertEquals(
+            null,
+            TvCatalog.replayPageUrl(TvCatalog.flatChannels.first { it.siteName == "湖南卫视" }, item, 42),
+        )
+    }
+
+    @Test
     fun everyChannelHasUniqueSiteNameAndPid() {
         val channels = TvCatalog.flatChannels
 

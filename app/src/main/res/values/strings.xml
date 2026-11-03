@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">看电视</string>
+    <string name="app_name">WebTV</string>
     <string name="loading">正在加载直播…</string>
     <string name="exit_hint">再按一次返回键退出</string>
     <string name="channel_timeout_fallback">频道加载超时，正在尝试%1$s</string>
@@ -10,8 +10,6 @@
     <string name="browser_failure_retry">重试</string>
     <string name="setting_video_enhancement">画质增强</string>
     <string name="setting_channel_switch_reverse">换台反转</string>
-    <string name="setting_check_update">检查更新</string>
-    <string name="setting_check_update_now">立即检查</string>
     <string name="setting_about">关于</string>
     <string name="setting_off">关闭</string>
     <string name="setting_on">开启</string>
@@ -19,25 +17,8 @@
     <string name="video_enhancement_light">轻度增强</string>
     <string name="video_enhancement_standard">标准增强</string>
     <string name="video_enhancement_strong">强力增强</string>
-    <string name="about_developer">开发者：李鹏周</string>
-    <string name="about_version">版本号：%1$s（%2$d）</string>
+    <string name="about_version">版本号：Icybard 1.0</string>
     <string name="about_engine">内核：%1$s</string>
-    <string name="about_version_unknown">未知</string>
-    <string name="update_checking">正在检查更新…</string>
-    <string name="update_up_to_date">当前已是最新版本</string>
-    <string name="update_check_failed">检查更新失败：%1$s</string>
-    <string name="update_dialog_title">发现新版本 %1$s</string>
-    <string name="update_dialog_message">当前版本：%1$s\n最新版本：%2$s\n\n更新内容\n%3$s</string>
-    <string name="update_skip_version">跳过此版本</string>
-    <string name="update_now">更新</string>
-    <string name="update_skipped">已跳过版本 %1$s</string>
-    <string name="update_downloading">正在后台下载 %1$s，完成后将启动安装</string>
-    <string name="update_download_running">更新正在下载，完成后将启动安装</string>
-    <string name="update_download_failed">下载更新失败：%1$s</string>
-    <string name="update_verify_failed">更新文件不可用：%1$s</string>
-    <string name="update_allow_unknown_sources">请允许“看电视”安装未知来源应用，返回后将继续安装</string>
-    <string name="update_install_permission_denied">未获得安装权限，可稍后再次选择“更新”</string>
-    <string name="update_no_installer">设备上没有可用的 APK 安装器</string>
     <string name="touch_adjustment_brightness">亮度 %1$d%%</string>
     <string name="touch_adjustment_volume">音量 %1$d%%</string>
     <string name="touch_action_channels">频道列表</string>
@@ -46,5 +27,12 @@
     <string name="program_guide_loading">正在加载节目单…</string>
     <string name="program_guide_empty">今日暂无节目</string>
     <string name="program_guide_failed">节目单加载失败</string>
-    <string name="program_guide_replay_unsupported">暂不支持回看</string>
+    <string name="program_guide_replay_badge">回看</string>
+    <string name="program_guide_replay_channel_unsupported">该频道暂不支持回看</string>
+    <string name="program_guide_replay_not_ended">节目结束后可回看</string>
+    <string name="program_guide_replay_rights_unavailable">该节目因版权或会员限制不可回看</string>
+    <string name="program_guide_replay_page_unavailable">央视网未提供该节目的回看入口</string>
+    <string name="replay_loading">正在加载回看…</string>
+    <string name="replay_failed">回看加载失败，正在返回直播</string>
+    <string name="replay_banner">回看 · %1$s\n按返回键回到直播</string>
 </resources>

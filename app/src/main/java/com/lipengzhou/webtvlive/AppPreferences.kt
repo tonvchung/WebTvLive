@@ -8,8 +8,8 @@ import android.content.SharedPreferences
  *
  * [MainActivity], [SettingsPanelController] and [PlaybackTouchController] all read/write this one
  * file, so the file name and key strings live here instead of being re-declared per class. The
- * update tracker (`app_update_prefs`) and program-guide cache (`program_guide_cache`) are separate
- * stores owned by their respective classes and are intentionally not centralized here.
+ * program-guide cache (`program_guide_cache`) is a separate store owned by its repository and is
+ * intentionally not centralized here.
  */
 object AppPreferences {
     const val FILE_NAME = "webtvlive_prefs"

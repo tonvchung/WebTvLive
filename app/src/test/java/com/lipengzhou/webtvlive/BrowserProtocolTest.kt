@@ -17,7 +17,7 @@ class BrowserProtocolTest {
             BrowserProtocol.Command.SwitchChannel("CCTV13", "600001811", 42),
         )
 
-        assertEquals(1, payload.getInt("protocolVersion"))
+        assertEquals(BrowserProtocol.VERSION, payload.getInt("protocolVersion"))
         assertEquals("switchChannel", payload.getString("type"))
         assertEquals("CCTV13", payload.getString("channel"))
         assertEquals("600001811", payload.getString("pid"))
@@ -34,12 +34,27 @@ class BrowserProtocolTest {
         )
         assertTrue(
             BrowserProtocol.decodeEvent(
-                "{\"protocolVersion\":1,\"type\":\"playing\",\"requestId\":0}",
+                "{\"protocolVersion\":2,\"type\":\"playing\",\"requestId\":0}",
             ) is BrowserProtocol.DecodeResult.Invalid,
         )
         assertTrue(
             BrowserProtocol.decodeEvent(
-                "{\"protocolVersion\":1,\"type\":\"playing\",\"requestId\":1.5}",
+                "{\"protocolVersion\":2,\"type\":\"playing\",\"requestId\":1.5}",
+            ) is BrowserProtocol.DecodeResult.Invalid,
+        )
+    }
+
+    @Test
+    fun replayUnavailableRequiresPositiveRequestId() {
+        assertEquals(
+            BrowserProtocol.DecodeResult.Success(BrowserProtocol.PageEvent.ReplayUnavailable(12)),
+            BrowserProtocol.decodeEvent(
+                "{\"protocolVersion\":2,\"type\":\"replayUnavailable\",\"requestId\":12}",
+            ),
+        )
+        assertTrue(
+            BrowserProtocol.decodeEvent(
+                "{\"protocolVersion\":2,\"type\":\"replayUnavailable\",\"requestId\":0}",
             ) is BrowserProtocol.DecodeResult.Invalid,
         )
     }
@@ -47,11 +62,11 @@ class BrowserProtocolTest {
     @Test
     fun rejectsUnknownVersionTypeAndOversizedMessages() {
         assertTrue(
-            BrowserProtocol.decodeEvent("{\"protocolVersion\":2,\"type\":\"ready\"}")
+            BrowserProtocol.decodeEvent("{\"protocolVersion\":3,\"type\":\"ready\"}")
                 is BrowserProtocol.DecodeResult.Invalid,
         )
         assertTrue(
-            BrowserProtocol.decodeEvent("{\"protocolVersion\":1,\"type\":\"unknown\"}")
+            BrowserProtocol.decodeEvent("{\"protocolVersion\":2,\"type\":\"unknown\"}")
                 is BrowserProtocol.DecodeResult.Invalid,
         )
         assertTrue(

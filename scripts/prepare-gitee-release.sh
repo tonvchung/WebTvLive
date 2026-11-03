@@ -96,7 +96,7 @@ verify_remote() {
     apk_version_name=$(sed -n "s/.*versionName='\([^']*\)'.*/\1/p" <<<"$badging")
     engine=$(channel_engine "$channel")
     base_version_name=${apk_version_name%-$engine}
-    [[ "$apk_package" == "com.lipengzhou.webtvlive" ]] || {
+    [[ "$apk_package" == "com.tonvchung.webtv" ]] || {
       echo "$channel 的远端 APK 包名无效：$apk_package" >&2; exit 1
     }
     [[ "$apk_version_code" == "$version_code" && "$base_version_name" == "$version_name" ]] || {
@@ -171,7 +171,7 @@ for channel in "${CHANNELS[@]}"; do
     echo "$channel 的 APK 版本与 build.gradle.kts 不一致：$base_version_name" >&2
     exit 1
   }
-  [[ "$apk_package" == "com.lipengzhou.webtvlive" ]] || {
+  [[ "$apk_package" == "com.tonvchung.webtv" ]] || {
     echo "$channel 的 APK 包名无效：$apk_package" >&2; exit 1
   }
 

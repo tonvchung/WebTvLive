@@ -8,6 +8,7 @@ interface BrowserEngine {
     fun attach(container: ViewGroup, listener: Listener)
     fun canSwitchInPage(): Boolean
     fun loadChannel(channel: Channel, requestId: Long)
+    fun loadReplay(url: String)
     fun switchChannel(channel: Channel, requestId: Long): Boolean
     fun applyVideoEnhancement(level: VideoEnhancement)
     fun onResume()
@@ -23,6 +24,7 @@ interface BrowserEngine {
         data class PageStarted(val url: String) : Event
         data class PageStopped(val success: Boolean) : Event
         data class PlaybackReady(val requestId: Long) : Event
+        data class ReplayUnavailable(val requestId: Long) : Event
         data class ChannelSelected(val channel: String) : Event
         data class Diagnostic(val message: String) : Event
         data class Failed(val failure: Failure) : Event

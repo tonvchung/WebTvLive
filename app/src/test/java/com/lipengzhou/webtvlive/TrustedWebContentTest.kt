@@ -22,4 +22,20 @@ class TrustedWebContentTest {
             ),
         )
     }
+
+    @Test
+    fun allowsOnlyExactOfficialCctvLiveReplayPages() {
+        assertTrue(TrustedWebContent.isAllowedMainFrameUrl("https://tv.cctv.com/live/cctv13/"))
+        assertTrue(
+            TrustedWebContent.isAllowedMainFrameUrl(
+                "https://tv.cctv.com/live/cctv5plus/?webtvReplayStart=1793714400",
+            ),
+        )
+        assertFalse(TrustedWebContent.isAllowedMainFrameUrl("http://tv.cctv.com/live/cctv13/"))
+        assertFalse(TrustedWebContent.isAllowedMainFrameUrl("https://tv.cctv.com/live/cctv18/"))
+        assertFalse(TrustedWebContent.isAllowedMainFrameUrl("https://tv.cctv.com/live/cctv13/other"))
+        assertFalse(
+            TrustedWebContent.isAllowedMainFrameUrl("https://tv.cctv.com.evil.example/live/cctv13/"),
+        )
+    }
 }

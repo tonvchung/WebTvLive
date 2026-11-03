@@ -1,12 +1,12 @@
 {
-  "version": 1,
+  "version": 2,
   "validEvent": {
-    "protocolVersion": 1,
+    "protocolVersion": 2,
     "type": "playing",
     "requestId": 9
   },
   "validCommand": {
-    "protocolVersion": 1,
+    "protocolVersion": 2,
     "type": "switchChannel",
     "channel": "CCTV13",
     "pid": "600001811",

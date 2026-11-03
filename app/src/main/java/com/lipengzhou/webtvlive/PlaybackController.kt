@@ -23,7 +23,6 @@ class PlaybackController(
     private val activity: MainActivity,
     private val binding: ActivityMainBinding,
     private val videoEnhancement: () -> VideoEnhancement,
-    private val onPlaybackStarted: () -> Unit,
 ) {
     private lateinit var browserEngine: BrowserEngine
     private var browserEngineGeneration = 0L
@@ -33,6 +32,17 @@ class PlaybackController(
     private lateinit var playbackCoordinator: PlaybackCoordinator
     private var scheduledPlaybackAttemptId: Long? = null
     private var activityStartedAt = 0L
+    private var activeReplay: ReplaySession? = null
+    private var browserShowingReplay = false
+
+    private data class ReplaySession(
+        val url: String,
+        val programName: String,
+        val requestId: Long,
+    )
+
+    val isReplayActive: Boolean
+        get() = activeReplay != null
 
     // 记住「上次播放的频道」：应用退出后重开继续播放该台
     private val prefs by lazy { AppPreferences.of(activity) }
@@ -79,12 +89,35 @@ class PlaybackController(
         handler.postDelayed(loadChannelRunnable, CHANNEL_SWITCH_DEBOUNCE_MS)
     }
 
-    /** 侧边菜单选台：与当前台不同才真正切换加载。 */
+    /** 侧边菜单选台；回看期间即使选择同一频道，也要返回该台直播。 */
     fun selectChannel(flatIndex: Int) {
-        if (flatIndex != currentChannelIndex) {
-            playbackCoordinator.selectChannel(flatIndex)
-            loadCurrentChannel()
-        }
+        val channelChanged = flatIndex != currentChannelIndex
+        if (channelChanged) playbackCoordinator.selectChannel(flatIndex)
+        if (channelChanged || isReplayActive) loadCurrentChannel()
+    }
+
+    /** 只打开央视网明确提供公开回看入口的节目，不传递或抓取视频流。 */
+    fun playReplay(channel: Channel, item: ProgramGuideItem) {
+        cancelPlaybackAttempt()
+        val channelIndex = TvCatalog.flatChannels.indexOf(channel)
+        if (channelIndex < 0) return
+        playbackCoordinator.selectChannel(channelIndex)
+        val attempt = playbackCoordinator.start(false)
+        val url = TvCatalog.replayPageUrl(channel, item, attempt.requestId) ?: return
+        activeReplay = ReplaySession(url, item.name, attempt.requestId)
+        browserShowingReplay = true
+        scheduledPlaybackAttemptId = attempt.attemptId
+        binding.replayBanner.visibility = View.GONE
+        binding.loadingText.setText(R.string.replay_loading)
+        binding.loadingText.visibility = View.VISIBLE
+        handler.postDelayed(playbackTimeoutRunnable, attempt.timeoutMs)
+        browserEngine.loadReplay(url)
+        Log.i(TAG, "Official CCTV replay requested: ${item.name}, request=${attempt.requestId}")
+    }
+
+    fun returnToLive() {
+        if (!isReplayActive) return
+        loadCurrentChannel()
     }
 
     fun applyVideoEnhancement(level: VideoEnhancement) {
@@ -137,6 +170,9 @@ class PlaybackController(
                         Log.i(TAG, "Browser page stop: success=${event.success}")
 
                     is BrowserEngine.Event.PlaybackReady -> handlePlaybackReady(event.requestId)
+
+                    is BrowserEngine.Event.ReplayUnavailable ->
+                        handleReplayUnavailable(event.requestId)
 
                     is BrowserEngine.Event.ChannelSelected ->
                         Log.i(TAG, "Yangshipin channel selected: ${event.channel}")
@@ -201,7 +237,16 @@ class PlaybackController(
             browserRecoveryCount = 0
             saveSuccessfulChannelIndex(ready.channelIndex)
             binding.loadingText.visibility = View.GONE
-            onPlaybackStarted()
+            val replay = activeReplay
+            if (replay != null && replay.requestId == requestId) {
+                binding.replayBanner.text = activity.getString(
+                    R.string.replay_banner,
+                    replay.programName,
+                )
+                binding.replayBanner.visibility = View.VISIBLE
+            } else {
+                binding.replayBanner.visibility = View.GONE
+            }
             Log.i(
                 TAG,
                 "Playback ready; loading overlay hidden: request=$requestId, " +
@@ -219,19 +264,30 @@ class PlaybackController(
             )
         }
     }
+
+    private fun handleReplayUnavailable(requestId: Long) {
+        if (activeReplay?.requestId != requestId) return
+        Toast.makeText(
+            activity,
+            R.string.program_guide_replay_page_unavailable,
+            Toast.LENGTH_SHORT,
+        ).show()
+        loadCurrentChannel()
+    }
     // endregion
 
     // region 换台加载 / 超时重试
-    /**
-     * 切换当前频道。页面适配脚本可用时优先在站内点击频道项；不可用时整页直达 pid 页面。
-     */
+    /** 回看页不能直接复用央视频页内换台，返回直播时必须整页加载。 */
     private fun loadCurrentChannel() {
-        // 首次加载可能绕过防抖直接进来，这里清一次待执行的防抖任务，避免重复加载
         handler.removeCallbacks(loadChannelRunnable)
         handler.removeCallbacks(playbackTimeoutRunnable)
+        activeReplay = null
+        binding.replayBanner.visibility = View.GONE
+        binding.loadingText.setText(R.string.loading)
         val channel = TvCatalog.flatChannels[currentChannelIndex]
         showChannelName(channel.name)
-        executePlaybackAttempt(playbackCoordinator.start(browserEngine.canSwitchInPage()))
+        val canSwitchInPage = !browserShowingReplay && browserEngine.canSwitchInPage()
+        executePlaybackAttempt(playbackCoordinator.start(canSwitchInPage))
     }
 
     private fun executePlaybackAttempt(attempt: PlaybackCoordinator.Attempt) {
@@ -255,6 +311,7 @@ class PlaybackController(
                 )
             }
             PlaybackCoordinator.LoadMode.DIRECT -> {
+                browserShowingReplay = false
                 browserEngine.loadChannel(channel, attempt.requestId)
                 Log.i(
                     TAG,
@@ -273,6 +330,12 @@ class PlaybackController(
 
     private fun handlePlaybackTimeout(attemptId: Long) {
         scheduledPlaybackAttemptId = null
+        if (activeReplay != null) {
+            Log.w(TAG, "Official replay timed out: attempt=$attemptId")
+            Toast.makeText(activity, R.string.replay_failed, Toast.LENGTH_SHORT).show()
+            loadCurrentChannel()
+            return
+        }
         val result = playbackCoordinator.onTimeout(attemptId)
         Log.w(
             TAG,

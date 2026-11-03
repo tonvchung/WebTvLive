@@ -139,6 +139,15 @@ class FlavorBrowserEngine(context: Context) : BrowserEngine {
         geckoSession?.loadUri(TvCatalog.pageUrl(channel))
     }
 
+    override fun loadReplay(url: String) {
+        require(TrustedWebContent.isAllowedMainFrameUrl(url)) { "拒绝加载非受信任回看页" }
+        pendingChannelSwitch = null
+        extensionPort?.disconnect()
+        extensionPort = null
+        geckoSession?.stop()
+        geckoSession?.loadUri(url)
+    }
+
     override fun switchChannel(channel: Channel, requestId: Long): Boolean {
         val port = extensionPort ?: return false
         return postChannelSwitch(port, channel, requestId)

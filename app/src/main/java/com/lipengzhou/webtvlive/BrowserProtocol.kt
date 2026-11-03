@@ -4,7 +4,7 @@ import org.json.JSONObject
 
 /** Versioned JSON protocol shared by Android browser adapters and the page adapter. */
 object BrowserProtocol {
-    const val VERSION = 1
+    const val VERSION = 2
     const val MAX_EVENT_BYTES = 16 * 1024
 
     sealed interface Command {
@@ -20,6 +20,7 @@ object BrowserProtocol {
     sealed interface PageEvent {
         data object Ready : PageEvent
         data class Playing(val requestId: Long) : PageEvent
+        data class ReplayUnavailable(val requestId: Long) : PageEvent
         data class ChannelSelected(val channel: String) : PageEvent
         data class Diagnostic(val message: String) : PageEvent
     }
@@ -72,6 +73,9 @@ object BrowserProtocol {
             val event = when (val type = payload.getString(KEY_TYPE)) {
                 TYPE_READY -> PageEvent.Ready
                 TYPE_PLAYING -> PageEvent.Playing(payload.requirePositiveLong(KEY_REQUEST_ID))
+                TYPE_REPLAY_UNAVAILABLE -> PageEvent.ReplayUnavailable(
+                    payload.requirePositiveLong(KEY_REQUEST_ID),
+                )
                 TYPE_CHANNEL_SELECTED -> PageEvent.ChannelSelected(
                     payload.getString(KEY_CHANNEL).also {
                         require(it.isNotBlank()) { "频道名不能为空" }
@@ -110,6 +114,7 @@ object BrowserProtocol {
     private const val TYPE_SWITCH_CHANNEL = "switchChannel"
     private const val TYPE_SET_VIDEO_ENHANCEMENT = "setVideoEnhancement"
     private const val TYPE_PLAYING = "playing"
+    private const val TYPE_REPLAY_UNAVAILABLE = "replayUnavailable"
     private const val TYPE_CHANNEL_SELECTED = "channelSelected"
     private const val TYPE_DIAGNOSTIC = "diagnostic"
 }

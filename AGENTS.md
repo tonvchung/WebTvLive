@@ -20,8 +20,8 @@
 - `app/src/main/java/com/lipengzhou/webtvlive/`（共享层）
   - `BrowserEngine.kt` / `BrowserProtocol.kt`：双内核共享接口与**版本化**原生↔页面消息协议。
   - `PlaybackCoordinator.kt`：换台/超时/重试/回退状态机（纯逻辑，注入时钟）。
-  - `ChannelMenuController.kt` / `SettingsPanelController.kt` / `PlaybackTouchController.kt` / `AppUpdateController.kt`：频道菜单+节目单、右侧设置、触屏覆盖层、更新安装。
-  - `PanelCoordinator.kt` / `TouchGestureInterpreter.kt` / `UpdateCheckCoordinator.kt`：可单测的纯状态/判定。
+  - `ChannelMenuController.kt` / `SettingsPanelController.kt` / `PlaybackTouchController.kt`：频道菜单+节目单、右侧设置、触屏覆盖层。
+  - `PanelCoordinator.kt` / `TouchGestureInterpreter.kt`：可单测的纯状态/判定。
   - `TvCatalog.kt`：内置频道目录；`Channel.siteName` **必须与央视频页面频道名完全一致**。
   - `TrustedWebContent.kt`：主框架导航 allowlist（安全边界，见下）。
 - `app/src/gecko/…/FlavorBrowserEngine.kt`、`WebTvLiveApplication.kt`：GeckoView 内核 + 进程级 `GeckoRuntime` 创建与 `warmUp()`。
@@ -71,13 +71,13 @@ export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home"
 
 ```bash
 adb -s <serial> install -r app/build/outputs/apk/webview/debug/webtvlive-webview-0.0.6-arm64-v8a-debug.apk
-adb -s <serial> shell monkey -p com.lipengzhou.webtvlive.debug -c android.intent.category.LAUNCHER 1
+adb -s <serial> shell monkey -p com.tonvchung.webtv.debug -c android.intent.category.LAUNCHER 1
 adb -s <serial> shell input keyevent 19   # 19/20=换台 23=开菜单/确定 82=设置 4=返回(2s内两次退出)
 adb -s <serial> exec-out screencap -p > /tmp/webtv.png   # 换台时左上角有频道名浮层可核对
 adb -s <serial> logcat -d | grep -i "WebTvLive\|Yangshipin\|Gecko\|MediaCodec"
 ```
 
-安装的是 **Debug** 包（`com.lipengzhou.webtvlive.debug`，应用名「看电视 Debug」），与 Release 沙箱隔离、可并存。
+安装的是 **Debug** 包（`com.tonvchung.webtv.debug`，应用名「WebTV」），与 Release 沙箱隔离、可并存。
 
 ## 质量门禁硬约束
 
@@ -100,7 +100,7 @@ adb -s <serial> logcat -d | grep -i "WebTvLive\|Yangshipin\|Gecko\|MediaCodec"
 
 以下是已落地的最小权限边界，**不得为图方便放宽**：
 
-- 主框架导航 allowlist：`TrustedWebContent` 只放行 `https://www.yangshipin.cn/tv/home`；Gecko 与 WebView 都执行。
+- 主框架导航 allowlist：`TrustedWebContent` 只放行 `https://www.yangshipin.cn/tv/home` 和央视网精确路径 `https://tv.cctv.com/live/cctv…/`；Gecko 与 WebView 都执行，不得放行其他主机或页面。
 - WebView：`usesCleartextTraffic="false"`、`MIXED_CONTENT_NEVER_ALLOW`、`allowFileAccess=false`、`allowContentAccess=false`；bridge 用每次导航刷新的随机 token + 消息 schema/大小校验，仅在受信任主框架生效。
 - 改动播放桥接或注入逻辑时保留上述校验，并考虑补安全回归（HTTP URL、非允许 host、伪造事件、超大消息均不能改变播放成功状态）。
 
@@ -117,7 +117,7 @@ adb -s <serial> logcat -d | grep -i "WebTvLive\|Yangshipin\|Gecko\|MediaCodec"
 
 ## 合规红线
 
-只嵌套展示官网公开直播页，不采集/存储/转发视频流；不破解登录/付费/清晰度限制；保留《免责声明》与侵权删除通道；非营利声明。
+只嵌套展示官网公开直播页与央视网明确公开的回看入口，不采集/存储/转发视频流；不破解登录/会员/付费/版权/清晰度限制；保留《免责声明》与侵权删除通道；非营利声明。
 
 ## AI Agent 必守规则（速查）
 

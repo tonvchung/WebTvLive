@@ -21,6 +21,7 @@ class ChannelMenuController(
     private val onInteraction: () -> Unit,
     private val onClosed: () -> Unit,
     private val onChannelChosen: (flatIndex: Int) -> Unit,
+    private val onReplayChosen: (Channel, ProgramGuideItem) -> Unit,
 ) {
     private val handler = Handler(Looper.getMainLooper())
     private val repository = ProgramGuideRepository(activity.applicationContext)
@@ -151,7 +152,7 @@ class ChannelMenuController(
             onInteraction()
             focusColumn(PanelCoordinator.ChannelColumn.PROGRAM_GUIDE)
             programGuideAdapter.setSelected(position)
-            showReplayUnsupported()
+            chooseReplay()
         }
 
         binding.categoryList.layoutManager = LinearLayoutManager(activity)
@@ -210,7 +211,7 @@ class ChannelMenuController(
             true
         }
         PanelCoordinator.ChannelColumn.PROGRAM_GUIDE -> {
-            showReplayUnsupported()
+            chooseReplay()
             true
         }
     }
@@ -253,7 +254,7 @@ class ChannelMenuController(
         selectedProgramGuideDate = ProgramGuideRepository.today()
         binding.programGuideList.visibility = View.INVISIBLE
         binding.programGuideStatus.visibility = View.GONE
-        programGuideAdapter.submit(emptyList())
+        programGuideAdapter.submit(emptyList(), channel)
         handler.removeCallbacks(loadProgramGuide)
         handler.postDelayed(loadProgramGuide, LOAD_DEBOUNCE_MS)
     }
@@ -276,6 +277,7 @@ class ChannelMenuController(
     }
 
     private fun showProgramGuide(guide: ProgramGuide) {
+        val channel = selectedChannel() ?: return
         if (guide.items.isEmpty()) {
             showStatus(R.string.program_guide_empty)
             return
@@ -283,7 +285,7 @@ class ChannelMenuController(
         val revealAfterPositioning = binding.programGuideList.visibility != View.VISIBLE
         binding.programGuideStatus.visibility = View.GONE
         if (revealAfterPositioning) binding.programGuideList.visibility = View.INVISIBLE
-        val currentIndex = programGuideAdapter.submit(guide.items)
+        val currentIndex = programGuideAdapter.submit(guide.items, channel)
         scrollProgramGuide(
             position = currentIndex.coerceAtLeast(0),
             revealAfterPositioning = revealAfterPositioning,
@@ -306,7 +308,7 @@ class ChannelMenuController(
     }
 
     private fun showStatus(messageRes: Int) {
-        programGuideAdapter.submit(emptyList())
+        programGuideAdapter.submit(emptyList(), selectedChannel())
         if (activeColumn() == PanelCoordinator.ChannelColumn.PROGRAM_GUIDE) {
             focusColumn(PanelCoordinator.ChannelColumn.CHANNEL)
         }
@@ -317,16 +319,29 @@ class ChannelMenuController(
         }
     }
 
-    private fun showReplayUnsupported() {
+    private fun chooseReplay() {
+        val channel = selectedChannel() ?: return
+        val item = programGuideAdapter.itemAt(programGuideAdapter.selectedIndex) ?: return
+        when (ReplayEligibility.evaluate(channel, item, System.currentTimeMillis() / 1000)) {
+            ReplayEligibility.Reason.AVAILABLE -> {
+                close()
+                onReplayChosen(channel, item)
+            }
+            ReplayEligibility.Reason.CHANNEL_UNSUPPORTED ->
+                showReplayUnavailable(R.string.program_guide_replay_channel_unsupported)
+            ReplayEligibility.Reason.NOT_ENDED ->
+                showReplayUnavailable(R.string.program_guide_replay_not_ended)
+            ReplayEligibility.Reason.RIGHTS_RESTRICTED ->
+                showReplayUnavailable(R.string.program_guide_replay_rights_unavailable)
+        }
+    }
+
+    private fun showReplayUnavailable(messageRes: Int) {
         val now = SystemClock.elapsedRealtime()
         if (now - replayToastShownAt < REPLAY_TOAST_THROTTLE_MS) return
         replayToastShownAt = now
         replayToast?.cancel()
-        replayToast = Toast.makeText(
-            activity,
-            R.string.program_guide_replay_unsupported,
-            Toast.LENGTH_SHORT,
-        ).also(Toast::show)
+        replayToast = Toast.makeText(activity, messageRes, Toast.LENGTH_SHORT).also(Toast::show)
     }
 
     private fun selectedChannel(): Channel? = TvCatalog.categories[categoryIndex]

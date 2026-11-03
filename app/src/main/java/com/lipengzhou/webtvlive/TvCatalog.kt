@@ -98,6 +98,26 @@ object TvCatalog {
     /** 央视频公开频道页：让官网在第一次初始化播放器时就选择目标频道。 */
     fun pageUrl(channel: Channel): String = "$YANGSHIPIN_HOME_URL?pid=${channel.pid}"
 
+    /** 央视网官方时移回看页；参数只用于让页面适配脚本定位对应节目的公开“回看”按钮。 */
+    fun replayPageUrl(channel: Channel, item: ProgramGuideItem, requestId: Long): String? {
+        val slug = cctvReplaySlug(channel) ?: return null
+        require(requestId > 0) { "requestId 必须是正整数" }
+        return "$CCTV_LIVE_URL/$slug/?webtvReplayStart=${item.startEpochSeconds}" +
+            "&webtvRequestId=$requestId"
+    }
+
+    fun cctvReplaySlug(channel: Channel): String? = when (channel.siteName) {
+        "CCTV5+" -> "cctv5plus"
+        "CCTV16-HD" -> "cctv16"
+        else -> Regex("^CCTV([1-9]|1[0-7])$")
+            .matchEntire(channel.siteName)
+            ?.groupValues
+            ?.get(1)
+            ?.let { "cctv$it" }
+    }
+
+    private const val CCTV_LIVE_URL = "https://tv.cctv.com/live"
+
     /** 按官网频道名查找拉平下标，供稳定频道兜底使用。 */
     fun indexOfSiteName(siteName: String): Int =
         flatChannels.indexOfFirst { it.siteName == siteName }

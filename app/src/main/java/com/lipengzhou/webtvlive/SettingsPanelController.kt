@@ -16,19 +16,15 @@ class SettingsPanelController(
     private val onInteraction: () -> Unit,
     private val onClosed: () -> Unit,
     private val onVideoEnhancementChanged: (VideoEnhancement) -> Unit,
-    private val onManualUpdateCheck: () -> Unit,
 ) {
     private enum class Item(val titleRes: Int) {
         VIDEO_ENHANCEMENT(R.string.setting_video_enhancement),
         CHANNEL_SWITCH_REVERSE(R.string.setting_channel_switch_reverse),
-        CHECK_UPDATE(R.string.setting_check_update),
         ABOUT(R.string.setting_about),
     }
 
     private val preferences = AppPreferences.of(activity)
-    private val availableItems = Item.entries.filter { item ->
-        BuildConfig.APP_UPDATES_ENABLED || item != Item.CHECK_UPDATE
-    }
+    private val availableItems = Item.entries
     private lateinit var categoryAdapter: MenuAdapter
     private lateinit var valueAdapter: MenuAdapter
     private var initialized = false
@@ -165,10 +161,6 @@ class SettingsPanelController(
                 labels = channelSwitchReverseLabels(),
                 selectedIndex = if (channelSwitchReversed) 1 else 0,
             )
-            Item.CHECK_UPDATE -> showSelectableValues(
-                labels = listOf(activity.getString(R.string.setting_check_update_now)),
-                selectedIndex = 0,
-            )
             Item.ABOUT -> {
                 panelCoordinator.focusSettingsColumn(PanelCoordinator.SettingsColumn.CATEGORY)
                 binding.settingsValueList.visibility = View.GONE
@@ -193,7 +185,6 @@ class SettingsPanelController(
         when (selectedItem()) {
             Item.VIDEO_ENHANCEMENT -> selectVideoEnhancement(position)
             Item.CHANNEL_SWITCH_REVERSE -> selectChannelSwitchReverse(position)
-            Item.CHECK_UPDATE -> onManualUpdateCheck()
             Item.ABOUT -> Unit
         }
     }
@@ -223,23 +214,15 @@ class SettingsPanelController(
         activity.getString(R.string.setting_on) + if (channelSwitchReversed) "  ✓" else "",
     )
 
-    private fun aboutText(): String {
-        val packageInfo = activity.packageManager.getPackageInfo(activity.packageName, 0)
-        return listOf(
-            activity.getString(R.string.about_developer),
-            activity.getString(R.string.about_engine, activity.getString(R.string.browser_engine_name)),
-            activity.getString(
-                R.string.about_version,
-                packageInfo.versionName ?: activity.getString(R.string.about_version_unknown),
-                packageInfo.longVersionCode,
-            ),
-        ).joinToString(separator = "\n")
-    }
+    private fun aboutText(): String = listOf(
+        activity.getString(R.string.about_engine, activity.getString(R.string.browser_engine_name)),
+        activity.getString(R.string.about_version),
+    ).joinToString(separator = "\n")
 
     private fun valueMaxIndex(): Int = when (selectedItem()) {
         Item.VIDEO_ENHANCEMENT -> VideoEnhancement.entries.lastIndex
         Item.CHANNEL_SWITCH_REVERSE -> 1
-        Item.CHECK_UPDATE, Item.ABOUT -> 0
+        Item.ABOUT -> 0
     }
 
     private fun selectedItem(): Item = availableItems.getOrElse(categoryAdapter.selectedIndex) {

@@ -25,6 +25,8 @@
   var pendingRequestId = 0;
   var activePlaybackRequestId = 0;
   var directChannelToVerify = '';
+  var pendingReplayStart = '';
+  var replaySelectionComplete = true;
   var channelCache = Object.create(null);
   var channelCacheDirty = true;
   var managedAncestors = [];
@@ -152,6 +154,50 @@
     rebuildChannelCache();
     item = channelCache[name];
     return item && item.isConnected ? item : null;
+  }
+
+  /** 从央视网官方直播页定位已播节目对应的公开“回看”按钮。 */
+  function activateReplayFromLocation() {
+    if (location.hostname !== 'tv.cctv.com') return;
+    var start = '';
+    var requestId = 0;
+    try {
+      var params = new URLSearchParams(location.search);
+      start = params.get('webtvReplayStart') || '';
+      requestId = Number(params.get('webtvRequestId')) || 0;
+    } catch (e) {}
+    if (!/^\d+$/.test(start) || requestId <= 0) return;
+    pendingReplayStart = start;
+    activePlaybackRequestId = requestId;
+    replaySelectionComplete = false;
+    playingNotified = false;
+    send('diagnostic', 'CCTV official replay requested: start=' + start);
+  }
+
+  function selectCctvReplay() {
+    if (!pendingReplayStart) return false;
+    var start = pendingReplayStart;
+    var button = document.querySelector('a.btn[starttime="' + start + '"]');
+    if (!button) {
+      var matchingRow = document.querySelector('[starttime="' + start + '"]');
+      var scheduleReady = document.querySelector('a.btn[starttime]');
+      if (!matchingRow && !scheduleReady) return false;
+      pendingReplayStart = '';
+      sendPort('replayUnavailable', { requestId: activePlaybackRequestId });
+      send('diagnostic', 'CCTV official replay entry unavailable: start=' + start);
+      return true;
+    }
+
+    pendingReplayStart = '';
+    replaySelectionComplete = true;
+    playingNotified = false;
+    videoBeforeChannelSwitch = configuredVideo && configuredVideo.isConnected
+      ? configuredVideo
+      : pickVideo();
+    waitingForReplacementVideo = videoBeforeChannelSwitch !== null;
+    button.click();
+    send('diagnostic', 'CCTV official replay button clicked: start=' + start);
+    return true;
   }
 
   /** 首次启动已通过官网 ?pid=... 直达目标频道，先绑定本次 requestId。 */
@@ -439,7 +485,7 @@
     try {
       video.autoplay = true;
       video.setAttribute('playsinline', '');
-      if (video.paused && !waitingForReplacementVideo) {
+      if (video.paused && !waitingForReplacementVideo && replaySelectionComplete) {
         var promise = video.play();
         if (promise && promise.catch) promise.catch(function () {});
       }
@@ -453,7 +499,7 @@
   function maybeNotifyPlaying() {
     var video = configuredVideo;
     if (
-      !video || !video.isConnected || directChannelToVerify ||
+      !video || !video.isConnected || directChannelToVerify || !replaySelectionComplete ||
       waitingForReplacementVideo || playingNotified || video.paused || video.ended ||
       video.readyState < 3 || video.videoWidth <= 0 || video.currentTime <= 0
     ) return;
@@ -553,6 +599,7 @@
     needsStructureRebuild = false;
 
     if (handleChannels) {
+      selectCctvReplay();
       verifyDirectChannel();
       selectYangshipinChannel();
     }
@@ -623,7 +670,7 @@
       for (var j = 0; j < mutation.addedNodes.length; j++) {
         var added = mutation.addedNodes[j];
         if (nodeMatchesOrContains(added, 'video, iframe')) discoverPlayer = true;
-        if (nodeMatchesOrContains(added, CHANNEL_SELECTOR)) {
+        if (nodeMatchesOrContains(added, CHANNEL_SELECTOR + ', [starttime]')) {
           channelCacheDirty = true;
           handleChannels = true;
         }
@@ -654,6 +701,7 @@
   });
 
   send('diagnostic', 'Event-driven player adapter injected: ' + location.href);
+  activateReplayFromLocation();
   connectNativePort();
   setTimeout(reportResourceFilterStats, 5000);
   domObserver.observe(document.documentElement, {

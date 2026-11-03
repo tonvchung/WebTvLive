@@ -65,7 +65,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.lipengzhou.webtvlive"
+        applicationId = "com.tonvchung.webtv"
         minSdk = 28
         targetSdk = 37
         versionCode = webtvliveVersionCode
@@ -90,10 +90,8 @@ android {
         debug {
             applicationIdSuffix = ".debug"
             versionNameSuffix = "-debug"
-            buildConfigField("boolean", "APP_UPDATES_ENABLED", "false")
         }
         release {
-            buildConfigField("boolean", "APP_UPDATES_ENABLED", "true")
             if (hasReleaseSigning) {
                 signingConfig = signingConfigs.getByName("release")
             }
@@ -107,12 +105,10 @@ android {
         create("gecko") {
             dimension = "engine"
             versionNameSuffix = "-gecko"
-            buildConfigField("String", "UPDATE_ENGINE", "\"gecko\"")
         }
         create("webview") {
             dimension = "engine"
             versionNameSuffix = "-webview"
-            buildConfigField("String", "UPDATE_ENGINE", "\"webview\"")
         }
     }
     splits {
