@@ -56,6 +56,9 @@ class PlaybackController(
     private val hideChannelNameRunnable = Runnable {
         binding.channelName.visibility = View.GONE
     }
+    private val hideReplayBannerRunnable = Runnable {
+        binding.replayBanner.visibility = View.GONE
+    }
     // 换台防抖：狂按遥控器时不每次都加载，停手后只对最终频道加载一次
     private val loadChannelRunnable = Runnable { loadCurrentChannel() }
     private val playbackTimeoutRunnable = Runnable {
@@ -107,6 +110,7 @@ class PlaybackController(
         activeReplay = ReplaySession(url, item.name, attempt.requestId)
         browserShowingReplay = true
         scheduledPlaybackAttemptId = attempt.attemptId
+        handler.removeCallbacks(hideReplayBannerRunnable)
         binding.replayBanner.visibility = View.GONE
         binding.loadingText.setText(R.string.replay_loading)
         binding.loadingText.visibility = View.VISIBLE
@@ -134,6 +138,7 @@ class PlaybackController(
 
     fun onDestroy() {
         handler.removeCallbacks(hideChannelNameRunnable)
+        handler.removeCallbacks(hideReplayBannerRunnable)
         handler.removeCallbacks(loadChannelRunnable)
         cancelPlaybackAttempt()
         browserFailureDialog?.dismiss()
@@ -233,6 +238,7 @@ class PlaybackController(
         val ready = playbackCoordinator.onPlaybackReady(requestId)
         if (ready != null) {
             handler.removeCallbacks(playbackTimeoutRunnable)
+            handler.removeCallbacks(hideReplayBannerRunnable)
             scheduledPlaybackAttemptId = null
             browserRecoveryCount = 0
             saveSuccessfulChannelIndex(ready.channelIndex)
@@ -244,6 +250,7 @@ class PlaybackController(
                     replay.programName,
                 )
                 binding.replayBanner.visibility = View.VISIBLE
+                handler.postDelayed(hideReplayBannerRunnable, REPLAY_BANNER_SHOW_MS)
             } else {
                 binding.replayBanner.visibility = View.GONE
             }
@@ -281,6 +288,7 @@ class PlaybackController(
     private fun loadCurrentChannel() {
         handler.removeCallbacks(loadChannelRunnable)
         handler.removeCallbacks(playbackTimeoutRunnable)
+        handler.removeCallbacks(hideReplayBannerRunnable)
         activeReplay = null
         binding.replayBanner.visibility = View.GONE
         binding.loadingText.setText(R.string.loading)
@@ -404,6 +412,7 @@ class PlaybackController(
     private companion object {
         const val TAG = "WebTvLive"
         const val CHANNEL_NAME_SHOW_MS = 3000L
+        const val REPLAY_BANNER_SHOW_MS = 5_000L
         // 换台防抖：停止按键 600ms 后才真正加载，避免连续切台把每个中间台都请求一遍被 CCTV 限流
         const val CHANNEL_SWITCH_DEBOUNCE_MS = 600L
         const val MAX_BROWSER_RECOVERY_COUNT = 1

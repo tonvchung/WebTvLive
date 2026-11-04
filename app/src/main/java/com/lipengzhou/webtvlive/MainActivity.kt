@@ -31,8 +31,7 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
     private lateinit var playbackController: PlaybackController
-    // 返回键两次退出
-    private var lastBackPressedTime = 0L
+    private val backPressController = BackPressController()
 
     private val currentChannelIndex: Int
         get() = playbackController.currentChannelIndex
@@ -61,7 +60,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     companion object {
-        private const val BACK_EXIT_INTERVAL = 2000L
         private const val PANEL_AUTO_CLOSE_MS = 12_000L
     }
 
@@ -234,17 +232,13 @@ class MainActivity : AppCompatActivity() {
         if (settingsController.channelSwitchReversed) -defaultDelta else defaultDelta
 
     private fun handleBack() {
-        if (playbackController.isReplayActive) {
-            lastBackPressedTime = 0L
-            playbackController.returnToLive()
-            return
-        }
-        val now = System.currentTimeMillis()
-        if (now - lastBackPressedTime < BACK_EXIT_INTERVAL) {
-            finish()
-        } else {
-            lastBackPressedTime = now
-            Toast.makeText(this, R.string.exit_hint, Toast.LENGTH_SHORT).show()
+        when (backPressController.onBack(playbackController.isReplayActive)) {
+            BackPressController.Action.SHOW_REPLAY_HINT ->
+                Toast.makeText(this, R.string.replay_return_hint, Toast.LENGTH_SHORT).show()
+            BackPressController.Action.SHOW_EXIT_HINT ->
+                Toast.makeText(this, R.string.exit_hint, Toast.LENGTH_SHORT).show()
+            BackPressController.Action.RETURN_TO_LIVE -> playbackController.returnToLive()
+            BackPressController.Action.EXIT_APP -> finish()
         }
     }
     // endregion

@@ -80,3 +80,31 @@ test('playerFrameScore boosts player-like iframe sources', () => {
   const genericFrame = core.playerFrameScore(800, 800, 'https://ads.example.com/banner');
   assert.ok(playerFrame > genericFrame);
 });
+
+test('qualityValue understands numeric and official Chinese quality labels', () => {
+  assert.equal(core.qualityValue('480'), 480);
+  assert.equal(core.qualityValue('蓝光 1080P'), 1080);
+  assert.equal(core.qualityValue('超清'), 720);
+  assert.equal(core.qualityValue('高清'), 540);
+  assert.equal(core.qualityValue('标清'), 480);
+  assert.equal(core.qualityValue('流畅'), 360);
+  assert.equal(core.qualityValue('4K'), 2160);
+  assert.equal(core.qualityValue('8K'), 4320);
+});
+
+test('qualityValue ignores automatic, unknown and invalid options', () => {
+  assert.equal(core.qualityValue('auto'), 0);
+  assert.equal(core.qualityValue('自动'), 0);
+  assert.equal(core.qualityValue('未知'), 0);
+  assert.equal(core.qualityValue(''), 0);
+  assert.equal(core.qualityValue(null), 0);
+  assert.equal(core.qualityValue(Number.NaN), 0);
+});
+
+test('highestQualityIndex selects the highest public option without choosing auto', () => {
+  assert.equal(core.highestQualityIndex(['360', '480', 'auto']), 1);
+  assert.equal(core.highestQualityIndex(['自动', '超清 720P', '蓝光 1080P']), 2);
+  assert.equal(core.highestQualityIndex(['1080P', '4K', '720P']), 1);
+  assert.equal(core.highestQualityIndex(['auto', '自动', '未知']), -1);
+  assert.equal(core.highestQualityIndex([]), -1);
+});

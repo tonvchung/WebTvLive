@@ -13,6 +13,9 @@
     '.tv-main-con-r-list-left-imga, .tv-main-con-r-list-left-imgb';
   var SELECTED_CHANNEL_SELECTOR =
     '.tv-main-con-r-list-left-imga.tvSelect, .tv-main-con-r-list-left-imgb.tvSelect';
+  var QUALITY_ITEM_SELECTOR = '.bei-list .item, [id^="resolution_item_"][itemvalue]';
+  var QUALITY_STATE_SELECTOR = QUALITY_ITEM_SELECTOR +
+    ', [id^="player_resolution_show_"][activeresolution]';
 
   var playingNotified = false;
   var configuredVideo = null;
@@ -39,6 +42,8 @@
   var needsStructureRebuild = false;
   var enforcingVideoPolicy = false;
   var lastReportedBlockedRequestCount = -1;
+  var lastQualityRequestKey = '';
+  var lastQualityActiveKey = '';
   var videoEnhancementLevel = 'original';
 
   function send(type, message) {
@@ -371,6 +376,72 @@
     send('diagnostic', 'Video enhancement applied: ' + videoEnhancementLevel);
   }
 
+  /** Read only the official players' public quality controls. */
+  function qualityChoices() {
+    var choices = [];
+    var nodes;
+    var i;
+    if (location.hostname === 'tv.cctv.com') {
+      nodes = document.querySelectorAll('[id^="resolution_item_"][itemvalue]');
+      var show = document.querySelector('[id^="player_resolution_show_"][activeresolution]');
+      var activeValue = show ? show.getAttribute('activeresolution') || '' : '';
+      for (i = 0; i < nodes.length; i++) {
+        var itemValue = nodes[i].getAttribute('itemvalue') || '';
+        choices.push({
+          element: nodes[i],
+          value: itemValue,
+          active: itemValue === activeValue,
+        });
+      }
+    } else {
+      nodes = document.querySelectorAll('.bei-list .item');
+      for (i = 0; i < nodes.length; i++) {
+        choices.push({
+          element: nodes[i],
+          value: nodes[i].textContent.trim(),
+          active: nodes[i].classList.contains('active'),
+        });
+      }
+    }
+    return choices;
+  }
+
+  function currentQualityLabel() {
+    if (location.hostname === 'tv.cctv.com') {
+      var show = document.querySelector('[id^="player_resolution_show_"][activeresolution]');
+      return show ? show.textContent.trim() || show.getAttribute('activeresolution') || 'auto' : 'auto';
+    }
+    var active = document.querySelector('.bei-list .item.active');
+    return active ? active.textContent.trim() : 'auto';
+  }
+
+  /** Select the highest available public quality once per player/list, without stream rewriting. */
+  function selectHighestQuality() {
+    var choices = qualityChoices();
+    if (!choices.length) return false;
+    var values = [];
+    for (var i = 0; i < choices.length; i++) values.push(choices[i].value);
+    var bestIndex = core.highestQualityIndex(values);
+    if (bestIndex < 0) return false;
+
+    var key = values.join('|') + '>' + bestIndex;
+    if (choices[bestIndex].active) {
+      lastQualityRequestKey = '';
+      if (lastQualityActiveKey !== key) {
+        lastQualityActiveKey = key;
+        send('diagnostic', 'Highest available quality active: ' + values[bestIndex]);
+      }
+      return false;
+    }
+    if (lastQualityRequestKey === key) return false;
+
+    lastQualityRequestKey = key;
+    lastQualityActiveKey = '';
+    choices[bestIndex].element.click();
+    send('diagnostic', 'Highest available quality requested: ' + values[bestIndex]);
+    return true;
+  }
+
   function styleFullscreen(element) {
     setImp(element, 'position', 'fixed');
     setImp(element, 'left', '0px');
@@ -483,6 +554,7 @@
     if (!video || enforcingVideoPolicy) return;
     enforcingVideoPolicy = true;
     try {
+      selectHighestQuality();
       video.autoplay = true;
       video.setAttribute('playsinline', '');
       if (video.paused && !waitingForReplacementVideo && replaySelectionComplete) {
@@ -508,14 +580,13 @@
     sendPort('playing', { requestId: activePlaybackRequestId });
     reportResourceFilterStats();
     var rect = video.getBoundingClientRect();
-    var activeQuality = document.querySelector('.bei-list .item.active');
     send(
       'diagnostic',
       'Video playing: ' + video.videoWidth + 'x' + video.videoHeight +
         ', rect=' + Math.round(rect.width) + 'x' + Math.round(rect.height) +
         ', viewport=' + window.innerWidth + 'x' + window.innerHeight +
         ', volume=' + Math.round(video.volume * 100) + '%, muted=' + video.muted +
-        ', quality=' + (activeQuality ? activeQuality.textContent.trim() : 'auto') +
+        ', quality=' + currentQualityLabel() +
         ', url=' + location.href
     );
   }
@@ -566,6 +637,8 @@
     configuredVideo.removeEventListener('resize', onVideoReady);
     configuredVideo.removeEventListener('volumechange', onVideoVolumeChange);
     configuredVideo.removeEventListener('pause', onVideoPause);
+    lastQualityRequestKey = '';
+    lastQualityActiveKey = '';
     configuredVideo = null;
   }
 
@@ -651,6 +724,7 @@
       if (mutation.type === 'attributes') {
         var target = mutation.target;
         if (target.matches && target.matches(CHANNEL_SELECTOR)) handleChannels = true;
+        if (target.matches && target.matches(QUALITY_STATE_SELECTOR)) discoverPlayer = true;
         if (managedKept.indexOf(target) >= 0) repairStyles = true;
         continue;
       }
@@ -670,6 +744,7 @@
       for (var j = 0; j < mutation.addedNodes.length; j++) {
         var added = mutation.addedNodes[j];
         if (nodeMatchesOrContains(added, 'video, iframe')) discoverPlayer = true;
+        if (nodeMatchesOrContains(added, QUALITY_STATE_SELECTOR)) discoverPlayer = true;
         if (nodeMatchesOrContains(added, CHANNEL_SELECTOR + ', [starttime]')) {
           channelCacheDirty = true;
           handleChannels = true;
@@ -708,7 +783,7 @@
     childList: true,
     subtree: true,
     attributes: true,
-    attributeFilter: ['class'],
+    attributeFilter: ['class', 'activeresolution'],
     characterData: true,
   });
   scheduleReconcile(true, true, false, false);

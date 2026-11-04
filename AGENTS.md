@@ -70,7 +70,7 @@ export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home"
 模拟器无实体遥控器，用 `adb ... input keyevent` 触发 `MainActivity.dispatchKeyEvent`。**多设备必须带 `-s <serial>`。** 完整 adb 触屏/按键清单见 `README.md`，最小验证环：
 
 ```bash
-adb -s <serial> install -r app/build/outputs/apk/webview/debug/webtvlive-webview-0.0.6-arm64-v8a-debug.apk
+adb -s <serial> install -r app/build/outputs/apk/webview/debug/webtvlive-webview-1.2-arm64-v8a-debug.apk
 adb -s <serial> shell monkey -p com.tonvchung.webtv.debug -c android.intent.category.LAUNCHER 1
 adb -s <serial> shell input keyevent 19   # 19/20=换台 23=开菜单/确定 82=设置 4=返回(2s内两次退出)
 adb -s <serial> exec-out screencap -p > /tmp/webtv.png   # 换台时左上角有频道名浮层可核对
@@ -108,7 +108,7 @@ adb -s <serial> logcat -d | grep -i "WebTvLive\|Yangshipin\|Gecko\|MediaCodec"
 
 完整流程（构建→验签→提交→打标签→Gitee/GitHub 双发布→在线清单生效）以 `webtvlive-release` skill 为准。此处只记不变量：
 
-- 版本：`0.0.x`，默认只递增 patch；`versionCode` 每次 +1；tag 固定 `v<versionName>`（`app/build.gradle.kts`）。
+- 个人版：`versionCode` 每次 +1；Gradle `versionName` 与“关于”里的 Icybard 展示版本同步递增（`app/build.gradle.kts`）。如创建 tag，固定为 `v<versionName>`。
 - 只发 **release** APK（四个：`{gecko,webview}` × `{arm64-v8a,armeabi-v7a}`），禁发 debug/universal/错内核包。
 - 签名从环境变量 / Gradle property / 被 Git 忽略的 `local.properties` 读取：`WEBTVLIVE_RELEASE_STORE_FILE`、`..._STORE_PASSWORD`、`..._KEY_ALIAS`、`..._KEY_PASSWORD`。缺失会让 release 任务主动失败。
 - 应用内更新清单 `release/update.json` 的下载链接**只用** Gitee Release（`https://gitee.com/lipengzhou/WebTvLive/releases/download/v<versionName>/...`）。

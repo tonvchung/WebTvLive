@@ -39,10 +39,47 @@
     return width * height + sourceBonus;
   }
 
+  /** Return a comparable vertical resolution for an official player quality option. */
+  function qualityValue(raw) {
+    if (typeof raw === 'number') return isFinite(raw) && raw > 0 ? raw : 0;
+    var text = String(raw === undefined || raw === null ? '' : raw).trim().toLowerCase();
+    if (!text || text === 'auto' || text === '自动') return 0;
+    if (/8\s*k/.test(text)) return 4320;
+    if (/4\s*k/.test(text)) return 2160;
+
+    var numeric = text.match(/(\d{3,4})\s*p?/);
+    if (numeric) {
+      var value = Number(numeric[1]);
+      return value >= 180 && value <= 4320 ? value : 0;
+    }
+    if (text.indexOf('蓝光') >= 0) return 1080;
+    if (text.indexOf('超清') >= 0) return 720;
+    if (text.indexOf('高清') >= 0) return 540;
+    if (text.indexOf('标清') >= 0) return 480;
+    if (text.indexOf('流畅') >= 0) return 360;
+    return 0;
+  }
+
+  /** Pick the highest publicly listed quality; automatic/unknown options never win. */
+  function highestQualityIndex(values) {
+    var bestIndex = -1;
+    var bestValue = 0;
+    for (var i = 0; i < values.length; i++) {
+      var value = qualityValue(values[i]);
+      if (value > bestValue) {
+        bestValue = value;
+        bestIndex = i;
+      }
+    }
+    return bestIndex;
+  }
+
   root.WebTvLivePlayerAdapterCore = {
     enhancementProfile: enhancementProfile,
     normalizeEnhancementLevel: normalizeEnhancementLevel,
     videoScore: videoScore,
     playerFrameScore: playerFrameScore,
+    qualityValue: qualityValue,
+    highestQualityIndex: highestQualityIndex,
   };
 })(typeof window !== 'undefined' ? window : this);

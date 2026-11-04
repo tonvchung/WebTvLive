@@ -17,7 +17,7 @@
     <string name="video_enhancement_light">轻度增强</string>
     <string name="video_enhancement_standard">标准增强</string>
     <string name="video_enhancement_strong">强力增强</string>
-    <string name="about_version">版本号：Icybard 1.0</string>
+    <string name="about_version">版本号：Icybard 1.2</string>
     <string name="about_engine">内核：%1$s</string>
     <string name="touch_adjustment_brightness">亮度 %1$d%%</string>
     <string name="touch_adjustment_volume">音量 %1$d%%</string>
@@ -34,5 +34,6 @@
     <string name="program_guide_replay_page_unavailable">央视网未提供该节目的回看入口</string>
     <string name="replay_loading">正在加载回看…</string>
     <string name="replay_failed">回看加载失败，正在返回直播</string>
+    <string name="replay_return_hint">再按一次返回键回到直播</string>
     <string name="replay_banner">回看 · %1$s\n按返回键回到直播</string>
 </resources>

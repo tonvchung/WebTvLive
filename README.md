@@ -13,6 +13,7 @@ WebTvLive 是一款面向 Android TV 和触屏设备的全屏直播电视 App。
 - 央视回看：官方明确开放回看的已播节目显示“回看”徽标；未结束、卫视、会员或版权受限节目不会绕过限制。回看时按返回键或换台键回到直播。
 - 系统设置面板：右侧面板，当前支持画质增强档位（原始 / 轻度 / 标准 / 强力）。
 - 稳健播放：换台后等真实 `playing` 事件再隐藏加载遮罩，超时自动重试或回退到稳定频道。
+- 最高公开清晰度：自动选择官网当前提供的最高画质档；实际可用档位取决于频道和节目，画质增强滤镜不等于提升源分辨率。
 - 无应用内更新：不检查、下载或提示安装新版本。
 - 触屏调节：左半屏滑动调应用内亮度，右半屏滑动调系统媒体音量。
 
@@ -26,10 +27,10 @@ WebTvLive 是一款面向 Android TV 和触屏设备的全屏直播电视 App。
 | `DPAD_DOWN` / `CHANNEL_DOWN` | 上一个频道，开头循环到最后一个 |
 | `DPAD_CENTER` / `ENTER` | 打开频道列表 |
 | `MENU` / `SETTINGS` / `TV_CONTENTS_MENU` | 打开系统设置 |
-| `BACK` | 直播时 2 秒内按两次退出；回看时先返回当前频道直播 |
+| `BACK` | 直播时 2 秒内按两次退出；回看时第一次提示，2 秒内再按一次返回当前频道直播 |
 | `DPAD_LEFT` / `DPAD_RIGHT` | 播放态屏蔽，防止网页滚动或抢焦点 |
 
-频道列表打开后：上/下在当前列移动，左/右在分类、频道和节目单列间切换。确定进入下一列；在节目单列选择带“回看”徽标的已播节目可打开官方公开回看，选择其他节目会显示不可回看的原因。返回关闭，菜单键切到系统设置。
+频道列表打开后：上/下在当前列移动，左/右在分类、频道和节目单列间切换。确定进入下一列；在节目单列选择带“回看”徽标的已播节目可打开官方公开回看，选择其他节目会显示不可回看的原因。返回关闭，菜单键切到系统设置。回看开始后的右上角提示会在 5 秒后自动隐藏。
 
 系统设置打开后：上/下选择画质增强档位，确定应用，返回/菜单键关闭。
 
@@ -85,7 +86,7 @@ export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home"
 在模拟器/真机上运行（多设备用 `-s <serial>` 指定；模拟器用 `input keyevent` 等效遥控器）：
 
 ```bash
-adb -s <serial> install -r app/build/outputs/apk/gecko/debug/webtvlive-gecko-0.0.6-arm64-v8a-debug.apk
+adb -s <serial> install -r app/build/outputs/apk/gecko/debug/webtvlive-gecko-1.2-arm64-v8a-debug.apk
 adb -s <serial> shell monkey -p com.tonvchung.webtv.debug -c android.intent.category.LAUNCHER 1
 adb -s <serial> shell input keyevent 19   # 19/20 换台，23 开菜单/确定，82 设置，4 返回
 ```
