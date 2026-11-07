@@ -4,7 +4,7 @@ import org.json.JSONObject
 
 /** Versioned JSON protocol shared by Android browser adapters and the page adapter. */
 object BrowserProtocol {
-    const val VERSION = 2
+    const val VERSION = 3
     const val MAX_EVENT_BYTES = 16 * 1024
 
     sealed interface Command {
@@ -15,11 +15,14 @@ object BrowserProtocol {
         ) : Command
 
         data class SetVideoEnhancement(val level: VideoEnhancement) : Command
+        data object Play : Command
+        data object Pause : Command
     }
 
     sealed interface PageEvent {
         data object Ready : PageEvent
         data class Playing(val requestId: Long) : PageEvent
+        data class PlaybackChanged(val state: WebPlaybackState) : PageEvent
         data class ReplayUnavailable(val requestId: Long) : PageEvent
         data class ChannelSelected(val channel: String) : PageEvent
         data class Diagnostic(val message: String) : PageEvent
@@ -44,6 +47,9 @@ object BrowserProtocol {
                 put(KEY_TYPE, TYPE_SET_VIDEO_ENHANCEMENT)
                 put(KEY_LEVEL, command.level.wireValue)
             }
+
+            Command.Play -> put(KEY_TYPE, TYPE_PLAY)
+            Command.Pause -> put(KEY_TYPE, TYPE_PAUSE)
         }
     }
 
@@ -73,6 +79,11 @@ object BrowserProtocol {
             val event = when (val type = payload.getString(KEY_TYPE)) {
                 TYPE_READY -> PageEvent.Ready
                 TYPE_PLAYING -> PageEvent.Playing(payload.requirePositiveLong(KEY_REQUEST_ID))
+                TYPE_PLAYBACK_STATE -> PageEvent.PlaybackChanged(
+                    requireNotNull(WebPlaybackState.fromWire(payload.getString(KEY_STATE))) {
+                        "未知播放状态"
+                    },
+                )
                 TYPE_REPLAY_UNAVAILABLE -> PageEvent.ReplayUnavailable(
                     payload.requirePositiveLong(KEY_REQUEST_ID),
                 )
@@ -109,11 +120,15 @@ object BrowserProtocol {
     private const val KEY_LEVEL = "level"
     private const val KEY_MESSAGE = "message"
     private const val KEY_DETAIL = "detail"
+    private const val KEY_STATE = "state"
 
     private const val TYPE_READY = "ready"
     private const val TYPE_SWITCH_CHANNEL = "switchChannel"
     private const val TYPE_SET_VIDEO_ENHANCEMENT = "setVideoEnhancement"
+    private const val TYPE_PLAY = "play"
+    private const val TYPE_PAUSE = "pause"
     private const val TYPE_PLAYING = "playing"
+    private const val TYPE_PLAYBACK_STATE = "playbackState"
     private const val TYPE_REPLAY_UNAVAILABLE = "replayUnavailable"
     private const val TYPE_CHANNEL_SELECTED = "channelSelected"
     private const val TYPE_DIAGNOSTIC = "diagnostic"

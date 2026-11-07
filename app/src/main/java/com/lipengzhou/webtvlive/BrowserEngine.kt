@@ -11,6 +11,8 @@ interface BrowserEngine {
     fun loadReplay(url: String)
     fun switchChannel(channel: Channel, requestId: Long): Boolean
     fun applyVideoEnhancement(level: VideoEnhancement)
+    fun play()
+    fun pause()
     fun onResume()
     fun onPause()
     fun destroy()
@@ -24,6 +26,7 @@ interface BrowserEngine {
         data class PageStarted(val url: String) : Event
         data class PageStopped(val success: Boolean) : Event
         data class PlaybackReady(val requestId: Long) : Event
+        data class PlaybackChanged(val state: WebPlaybackState) : Event
         data class ReplayUnavailable(val requestId: Long) : Event
         data class ChannelSelected(val channel: String) : Event
         data class Diagnostic(val message: String) : Event

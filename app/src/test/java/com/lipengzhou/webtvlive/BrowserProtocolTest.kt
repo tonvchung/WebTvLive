@@ -25,6 +25,25 @@ class BrowserProtocolTest {
     }
 
     @Test
+    fun transportCommandsAndActualPlaybackStateUseVersionThree() {
+        assertEquals("play", BrowserProtocol.encode(BrowserProtocol.Command.Play).getString("type"))
+        assertEquals("pause", BrowserProtocol.encode(BrowserProtocol.Command.Pause).getString("type"))
+        assertEquals(
+            BrowserProtocol.DecodeResult.Success(
+                BrowserProtocol.PageEvent.PlaybackChanged(WebPlaybackState.PAUSED),
+            ),
+            BrowserProtocol.decodeEvent(
+                "{\"protocolVersion\":3,\"type\":\"playbackState\",\"state\":\"paused\"}",
+            ),
+        )
+        assertTrue(
+            BrowserProtocol.decodeEvent(
+                "{\"protocolVersion\":3,\"type\":\"playbackState\",\"state\":\"guessed\"}",
+            ) is BrowserProtocol.DecodeResult.Invalid,
+        )
+    }
+
+    @Test
     fun playingEventRequiresCurrentVersionAndPositiveRequestId() {
         val decoded = BrowserProtocol.decodeEvent(fixture.getJSONObject("validEvent"))
 
@@ -34,12 +53,12 @@ class BrowserProtocolTest {
         )
         assertTrue(
             BrowserProtocol.decodeEvent(
-                "{\"protocolVersion\":2,\"type\":\"playing\",\"requestId\":0}",
+                "{\"protocolVersion\":3,\"type\":\"playing\",\"requestId\":0}",
             ) is BrowserProtocol.DecodeResult.Invalid,
         )
         assertTrue(
             BrowserProtocol.decodeEvent(
-                "{\"protocolVersion\":2,\"type\":\"playing\",\"requestId\":1.5}",
+                "{\"protocolVersion\":3,\"type\":\"playing\",\"requestId\":1.5}",
             ) is BrowserProtocol.DecodeResult.Invalid,
         )
     }
@@ -49,12 +68,12 @@ class BrowserProtocolTest {
         assertEquals(
             BrowserProtocol.DecodeResult.Success(BrowserProtocol.PageEvent.ReplayUnavailable(12)),
             BrowserProtocol.decodeEvent(
-                "{\"protocolVersion\":2,\"type\":\"replayUnavailable\",\"requestId\":12}",
+                "{\"protocolVersion\":3,\"type\":\"replayUnavailable\",\"requestId\":12}",
             ),
         )
         assertTrue(
             BrowserProtocol.decodeEvent(
-                "{\"protocolVersion\":2,\"type\":\"replayUnavailable\",\"requestId\":0}",
+                "{\"protocolVersion\":3,\"type\":\"replayUnavailable\",\"requestId\":0}",
             ) is BrowserProtocol.DecodeResult.Invalid,
         )
     }
@@ -62,11 +81,11 @@ class BrowserProtocolTest {
     @Test
     fun rejectsUnknownVersionTypeAndOversizedMessages() {
         assertTrue(
-            BrowserProtocol.decodeEvent("{\"protocolVersion\":3,\"type\":\"ready\"}")
+            BrowserProtocol.decodeEvent("{\"protocolVersion\":4,\"type\":\"ready\"}")
                 is BrowserProtocol.DecodeResult.Invalid,
         )
         assertTrue(
-            BrowserProtocol.decodeEvent("{\"protocolVersion\":2,\"type\":\"unknown\"}")
+            BrowserProtocol.decodeEvent("{\"protocolVersion\":3,\"type\":\"unknown\"}")
                 is BrowserProtocol.DecodeResult.Invalid,
         )
         assertTrue(

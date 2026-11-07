@@ -164,6 +164,23 @@ class FlavorBrowserEngine(context: Context) : BrowserEngine {
         }
     }
 
+    override fun play() {
+        postTransportCommand(BrowserProtocol.Command.Play)
+    }
+
+    override fun pause() {
+        postTransportCommand(BrowserProtocol.Command.Pause)
+    }
+
+    private fun postTransportCommand(command: BrowserProtocol.Command) {
+        val port = extensionPort ?: return
+        try {
+            port.postMessage(BrowserProtocol.encode(command))
+        } catch (error: Exception) {
+            Log.e(TAG, "Unable to send playback command through WebExtension port", error)
+        }
+    }
+
     override fun onResume() {
         geckoSession?.setActive(true)
         geckoSession?.setFocused(true)

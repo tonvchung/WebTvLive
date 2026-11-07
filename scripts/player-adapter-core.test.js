@@ -101,6 +101,14 @@ test('qualityValue ignores automatic, unknown and invalid options', () => {
   assert.equal(core.qualityValue(Number.NaN), 0);
 });
 
+test('guard pause cannot be overridden by autoplay policy', () => {
+  assert.equal(core.shouldAttemptPlayback(false, true, false, true), false);
+  assert.equal(core.shouldAttemptPlayback(true, true, false, true), true);
+  assert.equal(core.shouldAttemptPlayback(true, false, false, true), false);
+  assert.equal(core.shouldAttemptPlayback(true, true, true, true), false);
+  assert.equal(core.shouldAttemptPlayback(true, true, false, false), false);
+});
+
 test('highestQualityIndex selects the highest public option without choosing auto', () => {
   assert.equal(core.highestQualityIndex(['360', '480', 'auto']), 1);
   assert.equal(core.highestQualityIndex(['自动', '超清 720P', '蓝光 1080P']), 2);

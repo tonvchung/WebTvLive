@@ -77,6 +77,13 @@ class PlaybackController(
             clockMillis = SystemClock::elapsedRealtime,
         )
         Log.i(TAG, "StartupTiming: activity_ready elapsed=${startupElapsed()}ms")
+        GuardPlaybackBridge.attach(
+            activity,
+            GuardPlaybackBridge.TransportListener(
+                onPlay = { if (::browserEngine.isInitialized) browserEngine.play() },
+                onPause = { if (::browserEngine.isInitialized) browserEngine.pause() },
+            ),
+        )
         createAndAttachBrowserEngine()
     }
 
@@ -143,6 +150,7 @@ class PlaybackController(
         cancelPlaybackAttempt()
         browserFailureDialog?.dismiss()
         if (::browserEngine.isInitialized) browserEngine.destroy()
+        GuardPlaybackBridge.detach()
     }
 
     // region 浏览器内核
@@ -175,6 +183,9 @@ class PlaybackController(
                         Log.i(TAG, "Browser page stop: success=${event.success}")
 
                     is BrowserEngine.Event.PlaybackReady -> handlePlaybackReady(event.requestId)
+
+                    is BrowserEngine.Event.PlaybackChanged ->
+                        GuardPlaybackBridge.update(event.state)
 
                     is BrowserEngine.Event.ReplayUnavailable ->
                         handleReplayUnavailable(event.requestId)

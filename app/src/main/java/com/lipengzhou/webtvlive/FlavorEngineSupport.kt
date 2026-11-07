@@ -55,6 +55,8 @@ internal inline fun dispatchPageEvent(
             BrowserProtocol.PageEvent.Ready -> onReady()
             is BrowserProtocol.PageEvent.Playing ->
                 listener?.onEvent(BrowserEngine.Event.PlaybackReady(event.requestId))
+            is BrowserProtocol.PageEvent.PlaybackChanged ->
+                listener?.onEvent(BrowserEngine.Event.PlaybackChanged(event.state))
             is BrowserProtocol.PageEvent.ReplayUnavailable ->
                 listener?.onEvent(BrowserEngine.Event.ReplayUnavailable(event.requestId))
             is BrowserProtocol.PageEvent.ChannelSelected ->

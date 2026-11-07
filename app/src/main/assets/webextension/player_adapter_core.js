@@ -74,8 +74,14 @@
     return bestIndex;
   }
 
+  /** A guard-requested pause must never be undone by the site's autoplay policy. */
+  function shouldAttemptPlayback(playbackAllowed, paused, waitingForReplacement, replayComplete) {
+    return !!(playbackAllowed && paused && !waitingForReplacement && replayComplete);
+  }
+
   root.WebTvLivePlayerAdapterCore = {
     enhancementProfile: enhancementProfile,
+    shouldAttemptPlayback: shouldAttemptPlayback,
     normalizeEnhancementLevel: normalizeEnhancementLevel,
     videoScore: videoScore,
     playerFrameScore: playerFrameScore,

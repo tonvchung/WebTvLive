@@ -1,7 +1,7 @@
 (function (root) {
   'use strict';
 
-  var VERSION = 2;
+  var VERSION = 3;
 
   function message(type, extra) {
     var payload = { protocolVersion: VERSION, type: type };
@@ -17,6 +17,7 @@
     if (!payload || payload.protocolVersion !== VERSION || typeof payload.type !== 'string') {
       return false;
     }
+    if (payload.type === 'play' || payload.type === 'pause') return true;
     if (payload.type === 'setVideoEnhancement') {
       return /^(original|light|standard|strong)$/.test(String(payload.level));
     }

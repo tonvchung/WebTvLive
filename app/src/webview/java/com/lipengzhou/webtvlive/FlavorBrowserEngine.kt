@@ -201,6 +201,14 @@ class FlavorBrowserEngine(private val context: Context) : BrowserEngine {
         Log.i(TAG, "Video enhancement requested: ${level.wireValue}")
     }
 
+    override fun play() {
+        postMessage(BrowserProtocol.encode(BrowserProtocol.Command.Play))
+    }
+
+    override fun pause() {
+        postMessage(BrowserProtocol.encode(BrowserProtocol.Command.Pause))
+    }
+
     override fun onResume() {
         webView?.onResume()
         webView?.resumeTimers()

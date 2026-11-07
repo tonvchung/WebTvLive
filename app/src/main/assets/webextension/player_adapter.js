@@ -18,6 +18,8 @@
     ', [id^="player_resolution_show_"][activeresolution]';
 
   var playingNotified = false;
+  var playbackAllowed = true;
+  var lastPlaybackState = '';
   var configuredVideo = null;
   var fullscreenTarget = null;
   var pendingChannel = '';
@@ -93,13 +95,40 @@
     requestAnimationFrame(reconcile);
   }
 
-  /** 建立 App <-> 页面持久连接，通过 Port 接收页内换台请求。 */
+  function reportPlaybackState(state) {
+    if (lastPlaybackState === state) return;
+    lastPlaybackState = state;
+    sendPort('playbackState', { state: state });
+  }
+
+  function requestPlay() {
+    playbackAllowed = true;
+    if (!configuredVideo || !configuredVideo.isConnected) return;
+    applyVideoPolicy(configuredVideo);
+    reportPlaybackState('waiting');
+  }
+
+  function requestPause() {
+    playbackAllowed = false;
+    if (configuredVideo && configuredVideo.isConnected) configuredVideo.pause();
+    reportPlaybackState('paused');
+  }
+
+  /** 建立 App <-> 页面持久连接，通过 Port 接收页内换台与播放控制请求。 */
   function connectNativePort() {
     try {
       nativePort = browser.runtime.connectNative('webtvlive');
       nativePort.onMessage.addListener(function (message) {
         if (!protocol.isCommand(message)) {
           send('diagnostic', 'Ignored invalid native command');
+          return;
+        }
+        if (message.type === 'play') {
+          requestPlay();
+          return;
+        }
+        if (message.type === 'pause') {
+          requestPause();
           return;
         }
         if (message.type === 'setVideoEnhancement') {
@@ -555,9 +584,14 @@
     enforcingVideoPolicy = true;
     try {
       selectHighestQuality();
-      video.autoplay = true;
+      video.autoplay = playbackAllowed;
       video.setAttribute('playsinline', '');
-      if (video.paused && !waitingForReplacementVideo && replaySelectionComplete) {
+      if (core.shouldAttemptPlayback(
+        playbackAllowed,
+        video.paused,
+        waitingForReplacementVideo,
+        replaySelectionComplete
+      )) {
         var promise = video.play();
         if (promise && promise.catch) promise.catch(function () {});
       }
@@ -593,6 +627,7 @@
 
   function onVideoPlaying(event) {
     if (event.currentTarget !== configuredVideo) return;
+    reportPlaybackState('playing');
     if (waitingForReplacementVideo && configuredVideo === videoBeforeChannelSwitch) {
       waitingForReplacementVideo = false;
       videoBeforeChannelSwitch = null;
@@ -608,9 +643,25 @@
     maybeNotifyPlaying();
   }
 
+  function onVideoWaiting(event) {
+    if (event.currentTarget !== configuredVideo) return;
+    reportPlaybackState('waiting');
+  }
+
+  function onVideoEnded(event) {
+    if (event.currentTarget !== configuredVideo) return;
+    reportPlaybackState('ended');
+  }
+
+  function onVideoError(event) {
+    if (event.currentTarget !== configuredVideo) return;
+    reportPlaybackState('error');
+  }
+
   function onVideoReset(event) {
     if (event.currentTarget !== configuredVideo) return;
     playingNotified = false;
+    reportPlaybackState(playbackAllowed ? 'waiting' : 'paused');
     scheduleReconcile(true, false, false, false);
   }
 
@@ -623,7 +674,11 @@
 
   function onVideoPause(event) {
     if (event.currentTarget !== configuredVideo || waitingForReplacementVideo) return;
-    applyVideoPolicy(configuredVideo);
+    if (playbackAllowed) {
+      applyVideoPolicy(configuredVideo);
+    } else {
+      reportPlaybackState('paused');
+    }
   }
 
   function unbindVideo() {
@@ -632,6 +687,9 @@
     configuredVideo.removeEventListener('loadedmetadata', onVideoReady);
     configuredVideo.removeEventListener('canplay', onVideoReady);
     configuredVideo.removeEventListener('timeupdate', maybeNotifyPlaying);
+    configuredVideo.removeEventListener('waiting', onVideoWaiting);
+    configuredVideo.removeEventListener('ended', onVideoEnded);
+    configuredVideo.removeEventListener('error', onVideoError);
     configuredVideo.removeEventListener('emptied', onVideoReset);
     configuredVideo.removeEventListener('abort', onVideoReset);
     configuredVideo.removeEventListener('resize', onVideoReady);
@@ -651,6 +709,9 @@
     video.addEventListener('loadedmetadata', onVideoReady);
     video.addEventListener('canplay', onVideoReady);
     video.addEventListener('timeupdate', maybeNotifyPlaying);
+    video.addEventListener('waiting', onVideoWaiting);
+    video.addEventListener('ended', onVideoEnded);
+    video.addEventListener('error', onVideoError);
     video.addEventListener('emptied', onVideoReset);
     video.addEventListener('abort', onVideoReset);
     video.addEventListener('resize', onVideoReady);

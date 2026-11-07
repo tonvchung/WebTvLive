@@ -6,8 +6,8 @@ plugins {
 }
 
 // 版本号在此集中定义，供 defaultConfig 与产物命名共用，保证 APK 文件名里的版本与内置版本一致。
-val webtvliveVersionCode = 8
-val webtvliveVersionName = "1.2"
+val webtvliveVersionCode = 9
+val webtvliveVersionName = "1.2.1"
 
 val localProperties = Properties().apply {
     val file = rootProject.file("local.properties")
